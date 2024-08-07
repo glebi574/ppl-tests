@@ -1,0 +1,6 @@
+{
+  "name":"Tests | Field",
+  "descriptions":["It is glowing"],
+  "entry_point":"level.lua",
+  "has_score_leaderboard":false
+}

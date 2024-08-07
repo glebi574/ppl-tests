@@ -1,0 +1,7 @@
+{
+  "name":"Tests | Ray Tracing",
+  "descriptions":["Check information UwU"],
+  "entry_point":"level.lua",
+	"information":"Use movement joystick to move light source. Turn shooting joystick up/down to increase/decrease amount of reflections. At the beginning it is situated in the centre of simulation and pink cross represents it.",
+  "has_score_leaderboard":false
+}
