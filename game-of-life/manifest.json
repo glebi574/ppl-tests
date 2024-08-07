@@ -1,0 +1,7 @@
+{
+  "name":"Tests | Game of Life",
+  "descriptions":["Tests | Game of Life"],
+  "entry_point":"level.lua",
+  "information":"Use movement joystick to move camera and shooting joystick to zoom in or out. 140x120 2-color display in PewPew Live!",
+  "has_score_leaderboard":false
+}

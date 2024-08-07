@@ -1,0 +1,6 @@
+{
+  "name":"#40ffa0ffHappy Waggy",
+  "descriptions":["#40ffa0ffYou've gotten a tail!"],
+  "entry_point":"level.lua",
+  "has_score_leaderboard":false
+}

@@ -1,0 +1,7 @@
+{
+  "name":"#40ff40ffTests | Perlin Noise",
+  "descriptions":["#40ff40ffUse joysticks to move and zoom in"],
+  "information": "#40ff40ffMade with ppol. Thanks rally4 for the idea and initial code. Restart the game to randomize mesh.",
+  "entry_point":"level.lua",
+  "has_score_leaderboard":false
+}
