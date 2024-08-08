@@ -8,5 +8,5 @@ local id = new_entity(0fx, 0fx)
 entity_set_mesh(id, 'mesh')
 
 add_update_callback(function()
-  camera.offset_z = inputs.sd * 800fx
+  --camera.offset_z = inputs.sd * 800fx
 end)

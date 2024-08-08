@@ -114,11 +114,11 @@ function perlin.lerp(t, a, b)
   return a + t * (b - a)
 end
 
-local size = 100
+local size = 80
 local offset = -size / 2 - 0.5
 local pixel_size = 4 -- 1.43
 local scale = 16
-local rx, ry = (random() + 1) * scale, (random() + 1) * scale
+local rx, ry = (random() + 1) * 2 ^ 16, (random() + 1) * 2 ^ 16
 
 local grid = {}
 local _min = 1
@@ -135,50 +135,66 @@ for x = 1, size do
 end
 
 local __v_r = (_max - _min)
+local __d_a = 8
+local __d_d = 1 / __d_a
 
 for x = 1, size do
   for y = 1, size do
     mesh:add_vertex{(x + offset) * pixel_size, (y + offset) * pixel_size}
-    local v = (grid[x][y] - _min) / __v_r * 2
-    mesh:add_color(make_color(0, v * v * 255 // 4, 0, 255))
+    local v = (grid[x][y] - _min) / __v_r // __d_d / __d_a
+    grid[x][y] = v
+    mesh:add_color(make_color(0, 255 * v // 1, 0, 255))
   end
 end
 
-local connections = {}
-
-local connection_amount = 2
-for x = 2, size - 1 do
-  for y = 2, size - 1 do
-    local v = {}
-    for i = -1, 1 do
-      for j = -1, 1 do
-        if not (i == 0 and j == 0) then
-          table.insert(v, {x + i, y + j, abs(grid[x][y] - grid[x + i][y + j])})
-        end
+function def_segments_layers1()
+  connections = {}
+  for x = 1, size do
+    for y = 1, size do
+      if x ~= size and grid[x][y] == grid[x + 1][y] then
+        connections[x - 1 .. ' ' .. y - 1 .. ' ' .. x .. ' ' .. y - 1] = 0
+      end
+      if y ~= size and grid[x][y] == grid[x][y + 1] then
+        connections[x - 1 .. ' ' .. y - 1 .. ' ' .. x - 1 .. ' ' .. y] = 0
       end
     end
-    table.sort(v, function(a, b) return a[3] < b[3] end)
-    for i = 1, connection_amount do
-      local xc, yc = v[i][1], v[i][2]
-      if x + y < xc + yc then
-        connections[x .. ' ' .. y .. ' ' .. xc .. ' ' .. yc] = 0
-      else
-        connections[xc .. ' ' .. yc .. ' ' .. x .. ' ' .. y] = 0
+  end
+  
+  for x = 0, size - 1 do
+    local segment = {}
+    for y = 0, size - 1 do
+      if connections[x .. ' ' .. y  .. ' ' .. x .. ' ' .. y + 1] then
+        table.insert(segment, x * size + y)
+      elseif #segment > 0 then
+        table.insert(segment, x * size + y)
+        mesh:add_segment(segment)
+        segment = {}
+      end
+    end
+  end
+  
+  for y = 0, size - 1 do
+    local segment = {}
+    for x = 0, size - 1 do
+      if connections[x .. ' ' .. y  .. ' ' .. x + 1 .. ' ' .. y] and grid[x + 1][y + 1] ~= 0 then
+        table.insert(segment, x * size + y)
+      elseif #segment > 0 then
+        table.insert(segment, x * size + y)
+        mesh:add_segment(segment)
+        segment = {}
       end
     end
   end
 end
 
-for v, _ in pairs(connections) do
-  local x1, y1, x2, y2 = v:match'(%d+) (%d+) (%d+) (%d+)'
-  x1, y1, x2, y2 = tonumber(x1) - 1, tonumber(y1) - 1, tonumber(x2) - 1, tonumber(y2) - 1
-  mesh:add_segment{x1 * size + y1, x2 * size + y2}
+function def_segments_linear_grid()
+  for x = 0, size - 1 do
+    local segment = {}
+    for y = 0, size - 1 do
+      table.insert(segment, x + y * size)
+    end
+    mesh:add_segment(segment)
+  end
 end
 
--- for x = 0, size - 1 do
-  -- local segment = {}
-  -- for y = 0, size - 1 do
-    -- table.insert(segment, x + y * size)
-  -- end
-  -- mesh:add_segment(segment)
--- end
+def_segments_layers1()
