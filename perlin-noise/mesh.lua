@@ -114,10 +114,10 @@ function perlin.lerp(t, a, b)
   return a + t * (b - a)
 end
 
-local size = 80
+local size = 100
 local offset = -size / 2 - 0.5
-local pixel_size = 4 -- 1.43
-local scale = 16
+local pixel_size = 4 -- 1.242
+local scale = 32
 local rx, ry = (random() + 1) * 2 ^ 16, (random() + 1) * 2 ^ 16
 
 local grid = {}
@@ -135,55 +135,69 @@ for x = 1, size do
 end
 
 local __v_r = (_max - _min)
-local __d_a = 8
+local __d_a = 64
 local __d_d = 1 / __d_a
+
+--[[
+  
+  local v = (grid[x][y] + 1) * 255 // 2 -- direct color
+  
+  local v = (grid[x][y] - _min) * 255 // __v_r -- offset color
+  
+  local v = (grid[x][y] - _min) / __v_r * 2 -- smoothed offset color
+  v * v * 255 // 4
+  
+  local v = (grid[x][y] - _min) / __v_r // __d_d / __d_a -- approximated offset color
+  grid[x][y] = v
+  255 * v // 1
+  
+]]
 
 for x = 1, size do
   for y = 1, size do
     mesh:add_vertex{(x + offset) * pixel_size, (y + offset) * pixel_size}
-    local v = (grid[x][y] - _min) / __v_r // __d_d / __d_a
+    local v = (grid[x][y] - _min) / __v_r // __d_d / __d_a -- approximated offset color
     grid[x][y] = v
     mesh:add_color(make_color(0, 255 * v // 1, 0, 255))
   end
 end
 
-function def_segments_layers1()
+function def_segments_layers2()
   connections = {}
-  for x = 1, size do
-    for y = 1, size do
-      if x ~= size and grid[x][y] == grid[x + 1][y] then
-        connections[x - 1 .. ' ' .. y - 1 .. ' ' .. x .. ' ' .. y - 1] = 0
+  for x = 2, size - 1 do
+    for y = 2, size - 1 do
+      if grid[x][y] == 0 then
+        goto __sl2_no_color
       end
-      if y ~= size and grid[x][y] == grid[x][y + 1] then
-        connections[x - 1 .. ' ' .. y - 1 .. ' ' .. x - 1 .. ' ' .. y] = 0
+      local on_border = false
+      for i = -1, 1 do
+        for j = -1, 1 do
+          if (i ~= 0 or j ~= 0) and grid[x][y] ~= grid[x + i][y + j] then
+            on_border = true
+            goto __sl2_e
+          end
+        end
       end
+      ::__sl2_e::
+      if on_border then
+        for i = -1, 1 do
+          for j = -1, 1 do
+            if (i ~= 0 or j ~= 0) and grid[x][y] == grid[x + i][y + j] then
+              connections[x .. ' ' .. y .. ' ' .. x + i .. ' ' .. y + j] = 0
+            end
+          end
+        end
+      end
+      ::__sl2_no_color::
     end
   end
-  
-  for x = 0, size - 1 do
-    local segment = {}
-    for y = 0, size - 1 do
-      if connections[x .. ' ' .. y  .. ' ' .. x .. ' ' .. y + 1] then
-        table.insert(segment, x * size + y)
-      elseif #segment > 0 then
-        table.insert(segment, x * size + y)
-        mesh:add_segment(segment)
-        segment = {}
-      end
-    end
-  end
-  
-  for y = 0, size - 1 do
-    local segment = {}
-    for x = 0, size - 1 do
-      if connections[x .. ' ' .. y  .. ' ' .. x + 1 .. ' ' .. y] and grid[x + 1][y + 1] ~= 0 then
-        table.insert(segment, x * size + y)
-      elseif #segment > 0 then
-        table.insert(segment, x * size + y)
-        mesh:add_segment(segment)
-        segment = {}
-      end
-    end
+  for v, _ in pairs(connections) do
+    local x1, y1, x2, y2 = v:match'(%d+) (%d+) (%d+) (%d+)'
+    x1, y1, x2, y2 = tonumber(x1), tonumber(y1), tonumber(x2), tonumber(y2)
+    connections[x2 .. ' ' .. y2 .. ' ' .. x1 .. ' ' .. y1] = nil
+    connections[x1 .. ' ' .. y2 .. ' ' .. x2 .. ' ' .. y1] = nil
+    connections[x2 .. ' ' .. y1 .. ' ' .. x1 .. ' ' .. y2] = nil
+    mesh:add_segment{(x1 - 1) * size + y1 - 1, (x2 - 1) * size + y2 - 1}
   end
 end
 
@@ -197,4 +211,4 @@ function def_segments_linear_grid()
   end
 end
 
-def_segments_layers1()
+def_segments_layers2()
