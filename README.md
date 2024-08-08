@@ -2,6 +2,7 @@
 Random stuff I create in PewPew Live. Mostly useless.
 # Perlin Noise
 ![image](https://github.com/user-attachments/assets/4bfd193b-c2c3-4da1-acc2-8e884c4ad0d4)
+![image](https://github.com/user-attachments/assets/6b7c0be4-4955-4154-9a87-673a08a3c38a)
 # Game of Life(made, using `Display`)
 ![image](https://github.com/user-attachments/assets/23742c20-0f80-43fb-8358-58df375737ee)
 # Ray Tracing
