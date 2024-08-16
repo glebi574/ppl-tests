@@ -114,29 +114,16 @@ function perlin.lerp(t, a, b)
   return a + t * (b - a)
 end
 
-local size = 100
+
+require'param'
+
+local size = grid_size
 local offset = -size / 2 - 0.5
-local pixel_size = 4 -- 1.242
-local scale = 32
-local rx, ry = (random() + 1) * 2 ^ 16, (random() + 1) * 2 ^ 16
+local scale = noise_scale
 
 local grid = {}
 local _min = 1
 local _max = -1
-
-for x = 1, size do
-  grid[x] = {}
-  for y = 1, size do
-    local v = perlin:noise(x / scale + rx, y / scale + ry)
-    grid[x][y] = v
-    _min = min(_min, v)
-    _max = max(_max, v)
-  end
-end
-
-local __v_r = (_max - _min)
-local __d_a = 64
-local __d_d = 1 / __d_a
 
 --[[
   
@@ -147,32 +134,85 @@ local __d_d = 1 / __d_a
   local v = (grid[x][y] - _min) / __v_r * 2 -- smoothed offset color
   v * v * 255 // 4
   
-  local v = (grid[x][y] - _min) / __v_r // __d_d / __d_a -- approximated offset color
+  local v = (grid[x][y] - _min) / __v_r // color_layer_approximator / color_layer_amount -- approximated offset color
   grid[x][y] = v
   255 * v // 1
   
 ]]
 
-for x = 1, size do
-  for y = 1, size do
-    mesh:add_vertex{(x + offset) * pixel_size, (y + offset) * pixel_size}
-    local v = (grid[x][y] - _min) / __v_r // __d_d / __d_a -- approximated offset color
-    grid[x][y] = v
-    mesh:add_color(make_color(0, 255 * v // 1, 0, 255))
+function create_grid()
+  for x = 1, size do
+    grid[x] = {}
+    for y = 1, size do
+      local v = perlin:noise(x / scale + rx, y / scale + ry)
+      grid[x][y] = v
+      _min = min(_min, v)
+      _max = max(_max, v)
+    end
+  end
+
+  local __v_r = (_max - _min)
+  for x = 1, size do
+    for y = 1, size do
+      mesh:add_vertex{(x + offset) * pixel_size, (y + offset) * pixel_size}
+      local v = (grid[x][y] + 1) / 2 // color_layer_approximator / color_layer_amount
+      grid[x][y] = v
+      mesh:add_color(make_color(0, v * 255 // 1, 0, 255))
+    end
+  end
+end
+
+function def_segments_layers1()
+  connections = {}
+  for x = 1, size do
+    for y = 1, size do
+      if x ~= size and grid[x][y] == grid[x + 1][y] then
+        connections[x - 1 .. ' ' .. y - 1 .. ' ' .. x .. ' ' .. y - 1] = 0
+      end
+      if y ~= size and grid[x][y] == grid[x][y + 1] then
+        connections[x - 1 .. ' ' .. y - 1 .. ' ' .. x - 1 .. ' ' .. y] = 0
+      end
+    end
+  end
+
+  for x = 0, size - 2 do
+    local segment = {}
+    for y = 0, size - 2 do
+      if connections[x .. ' ' .. y  .. ' ' .. x .. ' ' .. y + 1] then
+        table.insert(segment, x * size + y)
+      elseif #segment > 0 then
+        table.insert(segment, x * size + y)
+        mesh:add_segment(segment)
+        segment = {}
+      end
+    end
+  end
+
+  for y = 0, size - 2 do
+    local segment = {}
+    for x = 0, size - 2 do
+      if connections[x .. ' ' .. y  .. ' ' .. x + 1 .. ' ' .. y] and grid[x + 1][y + 1] ~= 0 then
+        table.insert(segment, x * size + y)
+      elseif #segment > 0 then
+        table.insert(segment, x * size + y)
+        mesh:add_segment(segment)
+        segment = {}
+      end
+    end
   end
 end
 
 function def_segments_layers2()
   connections = {}
-  for x = 2, size - 1 do
-    for y = 2, size - 1 do
+  for x = 1, size - 1 do
+    for y = 1, size - 1 do
       if grid[x][y] == 0 then
         goto __sl2_no_color
       end
       local on_border = false
       for i = -1, 1 do
         for j = -1, 1 do
-          if (i ~= 0 or j ~= 0) and grid[x][y] ~= grid[x + i][y + j] then
+          if (i ~= 0 or j ~= 0) and x + i ~= 0 and y + j ~= 0 and grid[x][y] ~= grid[x + i][y + j] then
             on_border = true
             goto __sl2_e
           end
@@ -182,7 +222,7 @@ function def_segments_layers2()
       if on_border then
         for i = -1, 1 do
           for j = -1, 1 do
-            if (i ~= 0 or j ~= 0) and grid[x][y] == grid[x + i][y + j] then
+            if (i ~= 0 or j ~= 0) and x + i ~= 0 and y + j ~= 0 and grid[x][y] == grid[x + i][y + j] then
               connections[x .. ' ' .. y .. ' ' .. x + i .. ' ' .. y + j] = 0
             end
           end
@@ -202,7 +242,7 @@ function def_segments_layers2()
 end
 
 function def_segments_linear_grid()
-  for x = 0, size - 1 do
+  for x = 0, size - 2 do
     local segment = {}
     for y = 0, size - 1 do
       table.insert(segment, x + y * size)
@@ -211,4 +251,12 @@ function def_segments_linear_grid()
   end
 end
 
-def_segments_layers2()
+function create_mesh(variation_i, file_i)
+  rx, ry = table.unpack(variations[variation_i])
+  rx = rx + (file_i // variation_size) * (size - 1) / scale
+  ry = ry + (file_i % variation_size) * (size - 1) / scale
+  create_grid()
+  def_segments_layers2()
+end
+
+return create_mesh
